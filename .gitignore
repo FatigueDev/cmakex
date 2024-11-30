@@ -1,6 +1,9 @@
 # The directory Mix will write compiled artifacts to.
 /_build/
 
+# Cmake build caching junk.
+/_build_natives/
+
 # If you run "mix test --cover", coverage assets end up here.
 /cover/
 
@@ -25,8 +28,7 @@ exray_cmake-*.tar
 # Temporary files, for example, from tests.
 /tmp/
 
-/priv/build_files/
-/priv/native_c/CMakeLists.txt
+/priv/
 
 /.elixir_ls/
 
@@ -36,7 +38,5 @@ exray_cmake-*.tar
 .formatter.exs
 
 mix.lock
-
-/build/
 
 /test/

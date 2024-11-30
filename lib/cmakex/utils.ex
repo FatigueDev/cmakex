@@ -4,12 +4,12 @@ defmodule Cmakex.Utils do
   import Cmakex.Process
   import Cmakex.Templates
 
-  def create_cmake_file(path) do
-    if !File.dir?(path) do
-      File.mkdir_p(path)
+  def create_cmake_file(natives_root) do
+    if !File.dir?(natives_root) do
+      File.mkdir_p(natives_root)
     end
 
-    File.write(Path.join(path, "CMakeLists.txt"), get_proc_joined())
+    File.write(Path.join(natives_root, "CMakeLists.txt"), get_proc_joined())
   end
 
   def set_default_env do
