@@ -8,10 +8,10 @@ defmodule Cmakex.Templates.TargetLinkLibraries do
         ~m"target_link_libraries(#{target}"
 
         Enum.each(libraries, fn lib ->
-          ~m" #{lib}"
+          ~m" #{lib}"i
         end)
 
-        ~m")"n
+        ~m")"ni
       end
     end
   end

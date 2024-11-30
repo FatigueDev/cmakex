@@ -21,13 +21,7 @@ defmodule Cmakex.MixProject do
   # Run "mix help deps" to learn about dependencies.
   defp deps do
     [
-      {:credo, "1.7.10", runtime: false, only: :dev},
-      {:raylib,
-       runtime: false,
-       compile: false,
-       app: false,
-       git: "https://github.com/raysan5/raylib.git",
-       tag: "5.5"}
+      {:credo, "1.7.10", runtime: false, only: :dev}
     ]
   end
 end

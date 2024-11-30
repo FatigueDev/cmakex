@@ -8,7 +8,7 @@ defmodule Cmakex.Templates.AddLibrary do
         ~m"add_library(#{target} #{String.upcase(Atom.to_string(type))}"
 
         Enum.each(files, fn file ->
-          ~m" #{file}"
+          ~m" #{file}"i
         end)
 
         ~m")"n

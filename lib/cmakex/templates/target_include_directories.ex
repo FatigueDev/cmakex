@@ -8,11 +8,11 @@ defmodule Cmakex.Templates.TargetIncludeDirectories do
         ~m"target_include_directories(#{target} #{String.upcase(Atom.to_string(before_or_after))}"
 
         if public = Keyword.get(opts, :PUBLIC, false) do
-          ~m" PUBLIC "
-          ~m"#{Enum.map_join(public, " ", fn public_option -> "#{public_option}" end)}"
+          ~m" PUBLIC "i
+          ~m"#{Enum.map_join(public, " ", fn public_option -> "#{public_option}" end)}"i
         end
 
-        ~m")"n
+        ~m")"ni
       end
     end
   end

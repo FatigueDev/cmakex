@@ -12,7 +12,7 @@ defmodule Cmakex.Utils do
     File.write(Path.join(path, "CMakeLists.txt"), get_proc_joined())
   end
 
-  def set_default_env() do
+  def set_default_env do
     config = Mix.Project.config()
     root_dir = :code.root_dir()
     erl_interface_dir = Path.join(root_dir, "usr")
@@ -57,32 +57,32 @@ defmodule Cmakex.Utils do
     System.get_env(var) || default
   end
 
-  def add_mix_dependency(app, required_version_notes) do
-    Process.put(:cmakex_dependencies, get_mix_dependencies() ++ [{app, required_version_notes}])
-  end
+  # def add_mix_dependency(app, required_version_notes) do
+  #   Process.put(:cmakex_dependencies, get_mix_dependencies() ++ [{app, required_version_notes}])
+  # end
 
-  defp get_mix_dependencies() do
-    Process.get(:cmakex_dependencies, [])
-  end
+  # defp get_mix_dependencies() do
+  #   Process.get(:cmakex_dependencies, [])
+  # end
 
-  def ensure_mix_dependencies() do
-    cmakex_dependencies = get_mix_dependencies()
-    mix_project_dependencies = Mix.Project.deps_apps()
+  # def ensure_mix_dependencies() do
+  #   cmakex_dependencies = get_mix_dependencies()
+  #   mix_project_dependencies = Mix.Project.deps_apps()
 
-    missing_dependencies =
-      Enum.filter(cmakex_dependencies, fn {dep, _} ->
-        dep not in mix_project_dependencies
-      end)
+  #   missing_dependencies =
+  #     Enum.filter(cmakex_dependencies, fn {dep, _} ->
+  #       dep not in mix_project_dependencies
+  #     end)
 
-    case missing_dependencies do
-      [{missing_dep, required_version_notes}] ->
-        raise(Cmakex.Exceptions.NoMixDependencyFound, {missing_dep, required_version_notes})
+  #   case missing_dependencies do
+  #     [{missing_dep, required_version_notes}] ->
+  #       raise(Cmakex.Exceptions.NoMixDependencyFound, {missing_dep, required_version_notes})
 
-      missing_deps when is_list(missing_deps) and length(missing_deps) > 0 ->
-        raise(Cmakex.Exceptions.NoMixDependencyFound, missing_deps)
+  #     missing_deps when is_list(missing_deps) and length(missing_deps) > 0 ->
+  #       raise(Cmakex.Exceptions.NoMixDependencyFound, missing_deps)
 
-      _ ->
-        :ok
-    end
-  end
+  #     _ ->
+  #       :ok
+  #   end
+  # end
 end

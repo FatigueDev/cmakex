@@ -13,11 +13,11 @@ defmodule Cmakex.Templates.Project do
         ~m"project(#{project_name}"
 
         if languages = Keyword.get(opts, :languages, false) do
-          ~m" LANGUAGES "
-          ~m"#{Enum.map_join(languages, " ", fn lang -> "#{lang}" end)}"
+          ~m" LANGUAGES "i
+          ~m"#{Enum.map_join(languages, " ", fn lang -> "#{lang}" end)}"i
         end
 
-        ~m")"n
+        ~m")"ni
       end
     end
   end

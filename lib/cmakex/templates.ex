@@ -6,6 +6,7 @@ defmodule Cmakex.Templates do
 
   use Cmakex.Templates.AddSubdirectory
   use Cmakex.Templates.AddLibrary
+  use Cmakex.Templates.Function
   use Cmakex.Templates.Message
   use Cmakex.Templates.Project
   use Cmakex.Templates.TargetCompileOptions
@@ -24,7 +25,7 @@ defmodule Cmakex.Templates do
     ~m"# #{text}"n
   end
 
-  def newline() do
+  def newline do
     ~m""n
   end
 

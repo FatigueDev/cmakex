@@ -37,6 +37,6 @@ exray_cmake-*.tar
 
 mix.lock
 
-/lib/example
+/build/
 
 /test/

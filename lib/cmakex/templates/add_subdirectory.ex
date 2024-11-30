@@ -10,7 +10,7 @@ defmodule Cmakex.Templates.AddSubdirectory do
         ~m"add_subdirectory(#{path} #{name}"
 
         Enum.each(opts, fn opt ->
-          ~m" #{String.upcase(Atom.to_string(opt))}"
+          ~m" #{String.upcase(Atom.to_string(opt))}"i
         end)
 
         ~m")"n
