@@ -40,3 +40,4 @@ exray_cmake-*.tar
 mix.lock
 
 /test/
+/natives/CMakeLists.txt

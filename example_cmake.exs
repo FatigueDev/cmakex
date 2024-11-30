@@ -3,6 +3,7 @@ use Cmakex, project_name: :cmake_example, cmake_minimum_required: "3.10"
 raylib_github = "https://github.com/raysan5/raylib.git"
 raylib_tag = 5.5
 example_output_path = Path.join([File.cwd!(), "priv", Atom.to_string(project_name)])
+example_cmake_source_file = Path.join([Path.dirname(__ENV__.file), "natives", "hello.cpp"])
 
 set(:CMAKE_LIBRARY_OUTPUT_DIRECTORY, example_output_path)
 
@@ -23,7 +24,7 @@ get_raylib =
 
 newline()
 
-add_library(project_name, :SHARED, ["hello.cpp"])
+add_library(project_name, :SHARED, [example_cmake_source_file])
 get_raylib.()
 
 newline()
