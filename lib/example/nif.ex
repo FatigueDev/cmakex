@@ -1,9 +1,13 @@
 defmodule Example.Nif do
-  @on_load :on_load
+  @moduledoc false
 
-  def on_load() do
-    :erlang.load_nif(Path.expand("priv/cmake_example/libcmake_example"), nil)
+  @nifs [check: 0]
+  @on_load :onload
+
+  def onload do
+    Code.ensure_loaded(Cmakex.Helpers.Path)
+    :erlang.load_nif(Cmakex.Helpers.Path.shared_object_file("record_testing"), 0)
   end
 
-  def check, do: nil
+  def check, do: :erlang.nif_error("Not loaded.")
 end

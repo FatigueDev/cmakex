@@ -38,6 +38,9 @@ exray_cmake-*.tar
 .formatter.exs
 
 mix.lock
+local_testing.exs
 
+/build/
+/natives/
 /test/
-/natives/CMakeLists.txt
+/compile/

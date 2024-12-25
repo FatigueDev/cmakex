@@ -1,21 +1,15 @@
 defmodule Cmakex do
   @moduledoc false
 
-  import Cmakex.Utils
-  import Cmakex.Templates
+  import Cmakex.Templates.Generic
 
-  defmacro __using__(project_name: project_name, cmake_minimum_required: version) do
+  defmacro __using__(opts) do
+    minimum_version = Keyword.get(opts, :cmake_minimum_required, "3.10")
+
     quote do
-      import Cmakex.Templates
-      import Cmakex.Sigils
-      import Cmakex.Utils
-
-      var!(project_name) = unquote(project_name)
-
-      ~m"cmake_minimum_required(VERSION #{unquote(version)})"n
-      project(unquote(project_name))
-      newline()
-      set_default_env()
+      cmake_minimum_required(unquote(minimum_version))
+      nl()
+      stamp_default_env()
     end
   end
 end
