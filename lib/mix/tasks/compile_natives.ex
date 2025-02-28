@@ -73,17 +73,46 @@ defmodule Mix.Tasks.Cmakex.Natives do
         project_name = Path.basename(file, ".cmake.exs")
         RuntimeConfig.clear_table()
         Line.clear_table()
-        Code.eval_file(file)
+
+        {{_, _, quoted}, bound_comments} =
+          File.read!(file)
+          |> Code.string_to_quoted_with_comments!(token_metadata: true)
+
+        quoted_filtered_to_cmake_blocks(quoted)
+        |> quoted_filtered_to_cmake_blocks()
+        |> assign_comments_for_filtered_cmake_blocks(bound_comments, project_name)
+
+        Code.eval_quoted(quoted, [], file: file)
+
         Cmakex.Build.create_cmake_file(project_name)
         Cmakex.Build.build(project_name)
       end)
     end)
+  end
 
-    #
-    #   File.cd!(dep_path, fn ->
-    #     Code.eval_file(file)
+  defp assign_comments_for_filtered_cmake_blocks(quoted, bound_comments, project_name) do
+    Enum.each(quoted, fn {_, _, _} = block ->
+      comments_for_block =
+        with s <- elem(block, 1)[:do][:line], e <- elem(block, 1)[:end][:line] do
+          s..e
+          |> Range.to_list()
+          |> get_comments_for_cmake_block(bound_comments)
+        end
 
-    #   end)
-    # end)
+      RuntimeConfig.set_comments(
+        "block_#{project_name}_#{elem(block, 1)[:do][:line]}",
+        comments_for_block
+      )
+    end)
+  end
+
+  defp get_comments_for_cmake_block(block_range, comments) do
+    Enum.filter(comments, fn %{line: line} ->
+      line in block_range
+    end)
+  end
+
+  defp quoted_filtered_to_cmake_blocks(quoted) do
+    Enum.filter(quoted, &(elem(&1, 0) == :cmake))
   end
 end

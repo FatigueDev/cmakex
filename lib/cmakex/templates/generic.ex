@@ -5,26 +5,19 @@ defmodule Cmakex.Templates.Generic do
   import Cmakex.Templates.Set
   alias Cmakex.Helpers.Environment
 
-  # defmacro __using__(_) do
-  #   quote do
-  def comment(text) do
-    append_line("# #{text}")
+  defmacro comment(text) do
+    quote do
+      append_line("# #{unquote(text)}")
+    end
   end
 
-  def include(value) do
+  defmacro include(value) do
     append_line("include(#{value})")
   end
 
-  def nl do
-    append_line(nil)
-  end
-
-  def nl(amount) when amount > 0 do
-    Enum.each(0..amount, fn _ -> nl() end)
-  end
-
-  def cmake_minimum_required(version) do
+  def cmake_minimum_required(version \\ "3.10") do
     append_line("cmake_minimum_required(VERSION #{version})")
+    append_line()
   end
 
   def stamp_default_env do
@@ -46,7 +39,7 @@ defmodule Cmakex.Templates.Generic do
     set("MIX_CONSOLIDATION_PATH", Mix.Project.consolidation_path(config))
     set("MIX_DEPS_PATH", Mix.Project.deps_path(config))
     set("MIX_MANIFEST_PATH", Mix.Project.manifest_path(config))
-    nl()
+    append_line()
 
     comment("Rebar naming")
     set("ERL_EI_LIBDIR", Environment.get_system_or_default("ERL_EI_LIBDIR", erl_ei_lib_dir))
@@ -56,7 +49,7 @@ defmodule Cmakex.Templates.Generic do
       Environment.get_system_or_default("ERL_EI_INCLUDE_DIR", erl_ei_include_dir)
     )
 
-    nl()
+    append_line()
 
     comment("erlang.mk naming")
 
@@ -75,7 +68,7 @@ defmodule Cmakex.Templates.Generic do
       Environment.get_system_or_default("ERL_INTERFACE_INCLUDE_DIR", erl_ei_include_dir)
     )
 
-    nl()
+    append_line()
 
     comment("Disable default erlang values")
     unset("BINDIR")
@@ -83,9 +76,6 @@ defmodule Cmakex.Templates.Generic do
     unset("PROGNAME")
     unset("EMU")
     comment("END_REGION:Elixir & Erlang Environment")
-    nl()
+    append_line()
   end
-
-  # end
-  # end
 end

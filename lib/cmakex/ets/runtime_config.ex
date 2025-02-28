@@ -10,11 +10,13 @@ defmodule Cmakex.ETS.RuntimeConfig do
     super(opts)
     insert({:depth, 0})
     insert({:current_line, 0})
+    insert({:comments, []})
   end
 
   def clear_table do
     :ets.update_element(__MODULE__, :depth, {2, 0})
     :ets.update_element(__MODULE__, :current_line, {2, 0})
+    :ets.update_element(__MODULE__, :comments, {2, 0})
   end
 
   def get_depth, do: lookup(:depth)
@@ -23,5 +25,14 @@ defmodule Cmakex.ETS.RuntimeConfig do
   def increment_depth, do: update_counter(:depth, 1)
   def decrement_depth, do: update_counter(:depth, -1)
 
+  def set_line(line_number), do: :ets.update_element(__MODULE__, :current_line, {2, line_number})
+
   def increment_line, do: update_counter(:current_line, 1)
+
+  def get_comments(block_id) do
+    dbg(block_id)
+    lookup(:"#{block_id}") |> List.first() |> elem(1)
+  end
+
+  def set_comments(id, comments), do: insert({:"#{id}", comments})
 end

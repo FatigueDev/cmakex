@@ -5,6 +5,7 @@ defmodule Cmakex.Templates do
     quote do
       import Cmakex.Templates.Add
       import Cmakex.Templates.Conditions
+      # import Cmakex.Templates.Cmake
       import Cmakex.Templates.Environment
       import Cmakex.Templates.ErlNif
       import Cmakex.Templates.FetchContent

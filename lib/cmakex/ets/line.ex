@@ -20,10 +20,25 @@ defmodule Cmakex.ETS.Line do
     append_line(")")
   end
 
+  def append_inline_with_args(function_name, "", args) do
+    append_inline(function_name <> "(")
+    append_inline_arguments(args, " ")
+    append_inline(")")
+    RuntimeConfig.increment_line()
+  end
+
   def append_inline_with_args(function_name, target, args) do
-    append_inline(function_name <> "(" <> target)
+    append_inline(function_name <> "(" <> target <> " ")
     append_inline_arguments(args)
     append_inline(")")
+    RuntimeConfig.increment_line()
+  end
+
+  def append_line do
+    Line.line()
+    |> Line.line_number(RuntimeConfig.get_line())
+    |> Cmakex.ETS.Line.insert()
+
     RuntimeConfig.increment_line()
   end
 
@@ -65,17 +80,54 @@ defmodule Cmakex.ETS.Line do
     end)
   end
 
-  def append_inline_arguments(arguments, separator \\ " ") do
+  def append_inline_arguments(
+        arguments,
+        # ,
+        separator \\ " "
+        # [prepend: prepend, append: append] \\ [prepend: true, append: false]
+      ) do
     Enum.each(arguments, fn arg ->
+      # dbg(List.first(arguments))
+      # dbg(arg)
+      # dbg(prepend)
+
+      # if List.first(arguments) != arg, do: append_inline(separator)
+
       case arg do
         {key, value} ->
-          append_inline("#{separator}#{key}#{separator}#{value}")
+          append_inline("#{key}#{separator}#{value}")
 
         value ->
-          append_inline("#{separator}#{value}")
+          append_inline("#{value}")
       end
+
+      if List.last(arguments) != arg, do: append_inline(separator)
     end)
   end
+
+  # def append_inline_arguments_no_prepended_separator(arguments, separator \\ " ") do
+  #   Enum.each(arguments, fn arg ->
+  #     case arg do
+  #       {key, value} ->
+  #         append_inline("#{key}#{separator}#{value}")
+
+  #       value ->
+  #         append_inline("#{value}")
+  #     end
+  #   end)
+  # end
+
+  # def append_inline_arguments(arguments, separator \\ " ") do
+  #   Enum.each(arguments, fn arg ->
+  #     case arg do
+  #       {key, value} ->
+  #         append_inline("#{separator}#{key}#{separator}#{value}")
+
+  #       value ->
+  #         append_inline("#{separator}#{value}")
+  #     end
+  #   end)
+  # end
 
   def transform_line_records(transform_function) do
     to_list()
