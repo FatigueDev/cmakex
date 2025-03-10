@@ -20,6 +20,18 @@ defmodule Cmakex.ETS.Line do
     append_line(")")
   end
 
+  def append_inline_with_args(function_name, target, []) do
+    append_inline("#{function_name}(#{target})")
+    RuntimeConfig.increment_line()
+  end
+
+  def append_inline_with_args(function_name, target, [arg]) do
+    append_inline(function_name <> "(" <> target <> " ")
+    append_inline(arg)
+    append_inline(")")
+    RuntimeConfig.increment_line()
+  end
+
   def append_inline_with_args(function_name, "", args) do
     append_inline(function_name <> "(")
     append_inline_arguments(args, " ")
@@ -59,14 +71,27 @@ defmodule Cmakex.ETS.Line do
     RuntimeConfig.increment_line()
   end
 
-  def append_inline(value) when is_atom(value), do: append_inline(to_string(value))
+  def append_line(value, line_number) when is_integer(line_number) do
+    Line.line(text: value)
+    |> Line.depth(RuntimeConfig.get_depth())
+    |> Line.line_number(current_line: line_number)
+    |> Cmakex.ETS.Line.insert()
+  end
 
   def append_inline(value) do
     Line.line(text: value)
-    |> Line.depth(RuntimeConfig.get_depth())
     |> Line.line_number(RuntimeConfig.get_line())
     |> Cmakex.ETS.Line.insert()
   end
+
+  # def append_inline(value) when is_atom(value), do: append_inline(to_string(value))
+
+  # def append_inline(value) do
+  #   Line.line(text: value)
+  #   |> Line.depth(RuntimeConfig.get_depth())
+  #   |> Line.line_number(RuntimeConfig.get_line())
+  #   |> Cmakex.ETS.Line.insert()
+  # end
 
   def append_line_arguments(arguments, separator \\ " ") do
     Enum.each(arguments, fn arg ->
@@ -80,13 +105,18 @@ defmodule Cmakex.ETS.Line do
     end)
   end
 
+  def append_inline_arguments(arguments, separator \\ " ")
+  def append_inline_arguments([], _separator), do: nil
+
   def append_inline_arguments(
         arguments,
         # ,
-        separator \\ " "
+        separator
         # [prepend: prepend, append: append] \\ [prepend: true, append: false]
       ) do
-    Enum.each(arguments, fn arg ->
+    # dbg({arguments, separator})
+
+    Enum.each(Enum.intersperse(arguments, separator), fn arg ->
       # dbg(List.first(arguments))
       # dbg(arg)
       # dbg(prepend)
@@ -95,13 +125,15 @@ defmodule Cmakex.ETS.Line do
 
       case arg do
         {key, value} ->
+          dbg("Adding key value when it shouldn't")
           append_inline("#{key}#{separator}#{value}")
 
         value ->
+          # dbg(value)
           append_inline("#{value}")
       end
 
-      if List.last(arguments) != arg, do: append_inline(separator)
+      # if List.last(arguments) != arg, do: append_inline(separator)
     end)
   end
 

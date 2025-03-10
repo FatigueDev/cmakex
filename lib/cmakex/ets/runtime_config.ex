@@ -30,8 +30,8 @@ defmodule Cmakex.ETS.RuntimeConfig do
   def increment_line, do: update_counter(:current_line, 1)
 
   def get_comments(block_id) do
-    dbg(block_id)
-    lookup(:"#{block_id}") |> List.first() |> elem(1)
+    lookup(:"#{block_id}")
+    |> then(&if(&1 == [], do: [], else: elem(List.first(&1), 1)))
   end
 
   def set_comments(id, comments), do: insert({:"#{id}", comments})

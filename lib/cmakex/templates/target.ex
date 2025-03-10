@@ -5,10 +5,10 @@ defmodule Cmakex.Templates.Target do
 
   # defmacro __using__(_) do
   #   quote do
-  def target_compile_options(target, before_or_after, opts) do
+  def target_compile_options(target, opts) do
     append_inline_with_args(
       "target_compile_options",
-      "#{target} #{String.upcase(Atom.to_string(before_or_after))}",
+      "#{target}",
       opts
     )
   end

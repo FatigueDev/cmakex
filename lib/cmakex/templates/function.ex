@@ -41,12 +41,16 @@ defmodule Cmakex.Templates.Function do
   #   end
   # end
 
-  defmacro define_variables(args) do
-    quote do
-      for v <- unquote(args) do
-        Macro.var(v, Cmakex.Cmake)
-      end
-    end
+  def function_header(key, args) do
+    # dbg({key, args})
+    {fixed_key, _, nil} = key
+    fixed_args = Enum.map_join(args, " ", fn {key, _, nil} -> "#{key}" end)
+    append_line("function(#{fixed_key} #{fixed_args})")
+  end
+
+  def function_close(key) do
+    {fixed_key, _, nil} = key
+    append_line("endfunction(#{fixed_key})")
   end
 
   # defmacro function(name, args, expression) do
@@ -65,10 +69,8 @@ defmodule Cmakex.Templates.Function do
   #   end
   # end
 
-  defmacro function_call(function_name, args) do
-    quote do
-      append_inline_with_args(unquote(function_name), "", unquote(args))
-    end
+  def function_call(function_name, args) do
+    append_inline_with_args(function_name, "", args)
   end
 
   # defmacro __using__(_) do

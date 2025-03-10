@@ -17,6 +17,10 @@ defmodule Cmakex.Templates.Add do
     append_inline_with_args("add_subdirectory", path, opts)
   end
 
+  def add_compile_options(opts) do
+    append_inline_with_args("add_compile_options", "", opts)
+  end
+
   #   end
   # end
 end

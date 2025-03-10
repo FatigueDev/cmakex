@@ -4,338 +4,366 @@ defmodule Cmakex.Cmake do
   import Cmakex.ETS.Line
   import Cmakex.ETS.RuntimeConfig
 
-  require Cmakex.Templates.Function
   alias Cmakex.Templates.ErlNif
   alias Cmakex.Templates.Generic
 
-  defmacro cmake([boilerplate: boilerplate] \\ [boilerplate: true], block) do
-    block_id = "block_#{Path.basename(__CALLER__.file, ".cmake.exs")}_#{__CALLER__.line}"
-    comments = get_comments(block_id)
+  # defp get_block_id(file, line), do: "block_#{Path.basename(file, ".cmake.exs")}_#{line}"
 
-    ast =
-      block
-      |> get_elements_in_block()
-      |> insert_comments(comments)
-      |> replace_elixir_ast_with_valid_cmake()
-      |> insert_newlines()
+  defmacro cmake(
+             [boilerplate: _boilerplate] = opts \\ [
+               boilerplate: true
+             ],
+             block
+           ) do
+    # var!(bound_comments)
 
-    dbg(ast)
+    # block = Macro.escape(block)
 
-    quote generated: true, file: __CALLER__.file, line: __CALLER__.line do
-      if unquote(boilerplate) do
-        Generic.cmake_minimum_required()
-        Generic.stamp_default_env()
-        unquote({:__block__, [line: 1], ast})
-        ErlNif.add_erts_to_target(Path.basename(__ENV__.file, ".cmake.exs"))
-      else
-        unquote({:__block__, [line: 1], ast})
-      end
-    end
-  end
+    block =
+      Macro.escape(
+        elem(List.first(block), 1)
+        |> Macro.update_meta(&Keyword.put(&1, :line, __CALLER__.line))
+      )
 
-  defp get_elements_in_block(block) do
-    List.first(block)
-    |> elem(1)
-    |> case do
-      {:__block__, [line: 1], elements} -> elements
-      element -> [element]
-    end
-  end
-
-  defp insert_comments(expanded_block, comments) when is_list(comments) do
-    Enum.map(comments, &to_comment/1)
-    |> Enum.concat(expanded_block)
-    |> Enum.sort_by(fn element ->
-      Keyword.get(elem(element, 1), :line)
-    end)
-  end
-
-  defp replace_elixir_ast_with_valid_cmake(quoted) do
-    Stream.transform(quoted, [], fn el, acc ->
-      # nested_value =
-      #   if is_tuple(elem(el, 0)) do
-      #     elem(el, 0)
-      #   else
-      #     false
-      #   end
-
-      {[parse_call(el)], acc}
-
-      # if nested_value do
-      #   {[nested_value], acc}
-      # else
-      #   {[el], acc}
-      # end
-
-      # cond do
-      #   elem(el, 0) == := ->
-      #     dbg(el)
-      #     dbg(elem(Enum.at(elem(el, 2), 1), 0))
-      #     {[el], acc}
-
-      #   elem(nested_value, 0) == :. ->
-      #     # dbg(el)
-
-      #     function_name = elem(List.first(elem(nested_value, 2)), 0)
-      #     function_args = elem(el, 2)
-
-      #     result =
-      #       quote line: elem(nested_value, 1)[:line] do
-      #         function_call(unquote(to_string(function_name)), unquote(function_args))
-      #       end
-
-      #     {[result], acc}
-
-      #   # elem(el, 0) == := ->
-      #   #   {[:assignment_op], acc}
-
-      #   # elem(el, 0) == :if ->
-      #   #   {[:if_statement], acc}
-
-      #   true ->
-      #     {[el], acc}
-
-      #     # elem(, 0) == :. ->
-      #     #   {[:function_call], acc}
-
-      #     # true ->
-      #     #   {[el], acc}
-      # end
-    end)
-    |> Stream.filter(fn el -> el != nil end)
-    |> Enum.to_list()
-  end
-
-  #   {:=, [end_of_expression: [newlines: 2, line: 8], line: 6],
-  #  [
-  #    {:my_func, [line: 6], nil},
-  #    {:fn, [closing: [line: 8], line: 6],
-  #     [
-  #       {:->, [newlines: 1, line: 6],
-  #        [
-  #          [{:left, [line: 6], nil}, {:right, [line: 6], nil}],
-  #          {:message,
-  #           [
-  #             end_of_expression: [newlines: 1, line: 7],
-  #             closing: [line: 7],
-  #             line: 7
-  #           ],
-  #           [
-  #             {:<<>>, [delimiter: "\"", line: 7],
-  #              [
-  #                {:"::", [line: 7],
-  #                 [
-  #                   {{:., [line: 7], [Kernel, :to_string]},
-  #                    [from_interpolation: true, closing: [line: 7], line: 7],
-  #                    [
-  #                      {:+, [line: 7],
-  #                       [{:left, [line: 7], nil}, {:right, [line: 7], nil}]}
-  #                    ]},
-  #                   {:binary, [line: 7], nil}
-  #                 ]}
-  #              ]}
-  #           ]}
-  #        ]}
-  #     ]}
-  #  ]}
-
-  defp parse_call(
-         {:=, meta, [{variable, [line: line], nil}, assignment_args] = assignment} =
-           el
-       ) do
-    case assignment do
-      {:=, meta, [{variable_name, [line: var_line], nil}, assignment]} ->
-        quote line: var_line do
-          message("Assignment")
-          # function(
-          #   {unquote(to_string(variable_name)), [line: unquote(var_line)], []},
-          #   unquote(func)
-          # )
-        end
-
-      [{variable_name, [line: var_line], _} = var, {:fn, fn_meta, fn_args} = func] = function_ast ->
-        # dbg(variable_name)
-        # dbg(func)
-
-        # dbg(function_ast)
-        [{_, _, [args, expression]}] = fn_args
-        # dbg(args)
-        # dbg(body)
-
-        # meta_args =
-        #   quote bind_quoted: [args: args], unquote: false do
-        #   end
-        #   |> dbg
-
-        vars =
-          Enum.map(args, fn arg ->
-            # {elem(arg, 0), [line: line], Cmakex.Cmake}
-            quote do
-              var!(unquote(arg)) = nil
-            end
-          end)
-
-        # expression = replace_elixir_ast_with_valid_cmake([expression]) |> dbg
-        dbg(args)
-
-        # args =
-        #   Enum.map(args, fn arg ->
-        #     elem(arg, 0)
-        #   end)
-
-        {:__block__, [line: line],
-         [
-           #  args,
-           quote context: Cmakex.Cmake do
-             #  Cmakex.Templates.Function.function(
-             #    unquote(variable_name),
-             #    unquote(args),
-             #    unquote(expression)
-             #  )
-
-             #  unquote(vars)
-             unquote(args)
-
-             append_line(
-               "function(#{unquote(variable_name)} #{Enum.map_join(unquote(args), " ", fn arg -> "#{arg}" end)})"
-             )
-
-             increment_depth()
-
-             unquote(expression)
-
-             decrement_depth()
-
-             append_line("endfunction(#{unquote(variable_name)})")
-           end
-         ]}
-
-      # with_updated_meta(line, 1)
-
-      # quote line: var_line, bind_quoted: [el: el] do
-      #   var!(unquote_splicing(args))
-      #   dbg(left)
-      #   # function(el)
-      # end
-      # |> dbg
-
-      _ ->
-        nil
+    quote do
+      # dbg(__ENV__)
+      # unquote(dbg(binding()))
+      cmake_gen(unquote(opts), unquote(block), var!(bound_comments))
+      |> Code.eval_quoted(binding(), __ENV__)
     end
 
-    # if {:fn, meta, args} = assignment do
-    #   dbg("Is a function assignment")
-    # else
-    #   quote line: line do
-    #     message(unquote(variable))
-    #   end
-    # end
+    # |> Code.eval_quoted(binding(:record_testing), __CALLER__)
 
-    # if Enum.any?(el, fn {key, _, _} -> key == :fn end) do
-    #   dbg("Has function call")
-    # else
-    #   "blah"
-    # end
+    # |> dbg
 
-    # if elem(Enum.at(args, 1), 0) == :fn do
-    #   "It's a function"
-    # else
-    #   "Not a function"
-    # end
+    # binding(__CALLER__) |> dbg
+    # Macro.Env.vars(__CALLER__) |> dbg
 
-    # dbg("Hit parse call with func / block")
-    # quote line: line do
-    # end
-    # "Hit"
+    # block_id = get_block_id(__CALLER__.file, __CALLER__.line)
+    # comments = get_comments(block_id)
+
+    # cmake_gen(opts, block, comments)
   end
 
-  defp parse_call(
-         {{:., [line: call_line], [{function_name, [line: function_line], _}]},
-          [
-            end_of_expression: [newlines: 1, line: _],
-            closing: [line: _],
-            line: function_line
-          ], function_args} = el
-       ) do
-    quote line: call_line do
-      function_call(unquote(to_string(function_name)), unquote(function_args))
-    end
+  def cmake_gen([boilerplate: true], block, comments) do
+    Generic.cmake_minimum_required()
+    Generic.stamp_default_env()
+
+    insert_comments(comments)
+
+    replace_elixir_ast_with_valid_cmake(block)
+
+    ErlNif.add_erts_to_target("${PROJECT_ID}")
+
+    # dbg(binding())
+
+    # block =
+    # quote location: :keep do
+    # get_elements_in_block(Macro.escape(unquote(block)))
+    # end
+
+    # {:__block__, [line: 1], block}
   end
 
-  defp parse_call({key, meta, args} = el), do: el
+  def cmake_gen([boilerplate: false], block, comments) do
+    {:__block__, block_meta, block_elements} = block
+    starting_line = block_meta[:line]
+    ending_line = elem(List.last(block_elements), 1)[:line]
 
-  # defp parse_call({:=, meta, args}) do
-  #   dbg("Is assignment")
+    comments_as_ast =
+      Enum.filter(comments, fn %{line: line} ->
+        line > starting_line && line < ending_line
+      end)
+      |> Enum.map(fn %{line: line, text: text} ->
+        quote line: line, do: append_line(unquote(text))
+      end)
+
+    block_elements =
+      (block_elements ++ comments_as_ast)
+      |> Enum.sort_by(fn {_, meta, _} ->
+        meta[:line]
+      end)
+
+    block = {:__block__, block_meta, block_elements}
+  end
+
+  def order_by_lines([]), do: nil
+
+  def order_by_lines([{key, _meta, args} = element | tail] = block) do
+    dbg(element)
+    order_by_lines(tail)
+  end
+
+  # def get_elements_in_block(block) do
+  #   List.first(block)
+  #   |> elem(1)
+  #   |> case do
+  #     {:__block__, [line: 1], elements} -> elements
+  #     element -> [element]
+  #   end
   # end
 
-  # defp parse_call({:fn, meta, args}) do
-  #   dbg("Is assignment")
-  # end
+  def insert_comments(comments) when is_list(comments) do
+    dbg(comments)
+    # quote location: :keep do
+    # Enum.each(comments, fn comment ->
+    #   # dbg(comment)
+    #   append_line(comment.text, comment.line)
+    # end)
 
-  # defp parse_call({:->, meta, args}) do
-  #   dbg("Is anonymous function")
-  # end
-
-  defp with_updated_meta(quoted, line, newlines) do
-    quoted
-    |> Macro.update_meta(&Keyword.put(&1, :closing, line: line))
-    |> Macro.update_meta(&Keyword.put(&1, :end_of_expression, newlines: newlines, line: line))
+    # Enum.map(unquote(comments), &to_comment/1)
+    # |> Enum.concat(Macro.escape(unquote(expanded_block)))
+    # |> Enum.sort_by(fn element ->
+    #   Keyword.get(elem(element, 1), :line)
+    # end)
+    # end
   end
 
-  defp to_comment(%{
-         line: line,
-         text: text,
-         column: _,
-         next_eol_count: newlines,
-         previous_eol_count: _
-       }) do
-    quote line: line do
-      append_line(unquote(text))
-    end
-    |> with_updated_meta(line, newlines)
-  end
+  def replace_elixir_ast_with_valid_cmake(block) do
+    # Macro.to_string(block)
+    # |> String.split("\n")
+    # |> Enum.map(fn el ->
+    #   el = String.trim(el)
+    #   n = Macro.escape(Macro.unescape_string(el), unquote: false)
+    #   dbg(n)
+    #   n
+    # end)
 
-  defp insert_newlines(expanded_block) do
-    Enum.reduce_while(expanded_block, [], fn element, acc ->
-      current_index =
-        Enum.find_index(expanded_block, fn el ->
-          element == el
+    # {post_walked, accumulated} =
+    quote do
+      {post_walked, accumulated} =
+        Macro.postwalk(unquote(Macro.escape(block) |> Enum.reverse()), [], fn el, acc ->
+          parse_element(el, acc)
         end)
 
-      # dbg(element)
+      # {new_ast, acc} =
+      #   Macro.traverse(
+      #     unquote(Macro.escape(block)),
+      #     [],
+      #     fn el, acc -> {el, acc} end,
+      #     fn el, acc -> {el, acc} end
+      #   )
 
-      add_newline_if_line_difference_exceeded(expanded_block, element, current_index, acc)
-    end)
-    |> Enum.concat(expanded_block)
-    |> Enum.sort_by(fn element ->
-      Keyword.get(elem(element, 1), :line)
-    end)
+      # |> dbg
+
+      accumulated = accumulated |> Enum.reverse()
+      dbg(accumulated)
+      # {_, bind} = Code.eval_quoted(new_ast, binding(), unquote(Macro.escape(__CALLER__)))
+      # Code.eval_quoted(accumulated, binding(), unquote(Macro.escape(__CALLER__)))
+    end
+
+    # post_walked
+    # quote do
+    #   unquote_splicing(post_walked)
+    #   unquote_splicing(accumulated)
+    # end
+
+    # dbg(post_walked)
+    # dbg(Enum.reverse(accumulated))
+
+    # quote location: :keep do
+    # post_walked
+    # unquote()
+    # unquote(accumulated)
+
+    # {ast_result, _total_lines} = Macro.postwalk(Macro.escape(unquote(quoted)), &parse_call(&1))
+
+    # ast_result |> Enum.filter(fn el -> el != nil end)
+    # end
   end
 
-  defp add_newline_if_line_difference_exceeded(expanded_block, element, current_index, acc) do
-    case Enum.at(expanded_block, current_index + 1, nil) do
-      nil ->
-        {:halt, acc}
+  # defmacro parse_call(el) do
+  #   el
+  # end
 
-      next ->
-        if line_difference(next, element) > 1 and Macro.classify_atom(elem(next, 0)) != :unquoted do
-          line = elem(element, 1)[:line] + 1
+  # def handle_element(el, acc) do
+  #   case el do
+  #     val ->
+  #       # dbg(val)
+  #       parse_element(val, acc)
+  #   end
+  # end
 
-          newline_ast =
-            quote line: line, unquote: false do
-              append_line()
-            end
-            |> with_updated_meta(line, 1)
+  # Function assignment
+  def parse_element(
+        {:=, _, [variable, {:fn, _, [{:->, _, [arguments, expression]}]}]} = el,
+        acc
+      ) do
+    todo =
+      quote do
+        Cmakex.Templates.Function.function_header(
+          unquote(Macro.escape(variable)),
+          unquote(Macro.escape(arguments))
+        )
 
-          {:cont, [newline_ast | acc]}
-        else
-          {:cont, acc}
-        end
+        increment_depth()
+
+        # unquote(parse_element(expression, [el | acc]))
+
+        # decrement_depth()
+
+        # Cmakex.Templates.Function.function_close(unquote(variable))
+      end
+
+    {el, [[todo | el] | acc]}
+  end
+
+  def parse_element({{:., meta, [{variable, [line: line], nil}]}, _meta, args} = el, acc) do
+    dbg(variable)
+
+    todo =
+      quote line: line do
+        Cmakex.Templates.Function.function_call(
+          to_string(unquote(variable)),
+          unquote(args)
+        )
+      end
+
+    {el, [[todo | el] | acc]}
+  end
+
+  def parse_element(el, acc), do: {el, [[el] | acc]}
+
+  # dbg("Assignment of value")
+
+  # case el do
+  #   # {:__block__, [handled: true, line: line] = meta, _el} ->
+  #   #   dbg("Shit should fall through.")
+  #   #   {nil, line_number}
+
+  #   {:fn, _, [{:->, _, [arguments, expression]}]} ->
+  #     dbg("Value is a function.")
+
+  #     # escaped_el = Macro.escape(el)
+  #     # escaped_key = Macro.escape(key)
+  #     # escaped_arguments = Macro.escape(arguments)
+  #     # escaped_expression = Macro.escape(expression)
+
+  #     # dbg({escaped_el, escaped_key, escaped_arguments, escaped_expression})
+
+  #     # fixed_args =
+  #     #   Enum.map(arguments, fn {arg_key, _, _} ->
+  #     #     arg_key
+  #     #   end)
+
+  #     # definition =
+  #     #   quote do
+  #     #     Cmakex.Templates.Function.function_header(unquote(key), unquote(fixed_args))
+
+  #     #     increment_depth()
+
+  #     #     unquote(expression)
+
+  #     #     decrement_depth()
+
+  #     #     Cmakex.Templates.Function.function_close(unquote(key))
+
+  #     #   end
+
+  #     # definition
+  #     el
+
+  #   _ ->
+  #     dbg(el)
+  #     el
+  # end
+
+  # defp parse_call({:dbg, meta, [value]} = el, line_number) do
+  #   result =
+  #     quote([line: line_number], do: message(:DEBUG, unquote(value)))
+
+  #   # result =
+  #   #   quote line: line_number, bind_quoted: [value: value] do
+  #   #     Cmakex.Templates.Message.message(:DEBUG, value)
+  #   #   end
+
+  #   {result, line_number + 1}
+  # end
+
+  defmacro parse_call({{:., _, [{function_name, _, nil}]}, meta, args} = el) do
+    # function_call(to_string(function_name), function_args)
+
+    quote do
+      Cmakex.Templates.Function.function_call(to_string(unquote(function_name)), unquote(args))
     end
   end
 
-  defp line_difference(left, right) do
-    Keyword.get(elem(left, 1), :line) -
-      Keyword.get(elem(right, 1), :closing, line: Keyword.get(elem(right, 1), :line))[:line]
+  defmacro parse_call(el, line_number) do
+    case el do
+      # {:__aliases__, meta, [key]} = alias_call ->
+      # dbg("Returning #{"${#{key}}"}")
+      # dbg(alias_call)
+      # {"#{key}", line_number + 1}
+
+      el ->
+        {el, line_number + 1}
+    end
   end
+
+  # defp with_updated_meta(quoted, line, newlines \\ 1) do
+  #   quoted
+  #   |> Macro.update_meta(&Keyword.put(&1, :closing, line: line))
+  #   |> Macro.update_meta(&Keyword.put(&1, :end_of_expression, newlines: newlines, line: line))
+  # end
+
+  # defmacro to_comment(comment) do
+  #   append_line(quote do: unquote(comment))
+
+  #   quote do
+  #     dbg(unquote(comment))
+  #   end
+  # end
+
+  # def insert_newlines(expanded_block) do
+  #   Enum.reduce_while(expanded_block, [], fn element, acc ->
+  #     current_index =
+  #       Enum.find_index(expanded_block, fn el ->
+  #         element == el
+  #       end)
+
+  #     # dbg(element)
+
+  #     add_newline_if_line_difference_exceeded(expanded_block, element, current_index, acc)
+  #   end)
+  #   |> Enum.concat(expanded_block)
+  #   |> Enum.sort_by(fn element ->
+  #     Keyword.get(elem(element, 1), :line)
+  #   end)
+  # end
+
+  # defp add_newline_if_line_difference_exceeded(expanded_block, element, current_index, acc) do
+  #   case Enum.at(expanded_block, current_index + 1, nil) do
+  #     nil ->
+  #       {:halt, acc}
+
+  #     {{:., _, [_]}, _, _} ->
+  #       # dbg("Should fall")
+  #       {:cont, acc}
+
+  #     next ->
+  #       to_classify = elem(next, 0)
+
+  #       # and Macro.classify_atom(to_classify) != :unquoted do
+  #       if line_difference(next, element) > 1 do
+  #         line = elem(element, 1)[:line] + 1
+
+  #         newline_ast =
+  #           quote line: line, unquote: false do
+  #             append_line()
+  #           end
+  #           |> with_updated_meta(line, 1)
+
+  #         {:cont, [newline_ast | acc]}
+  #       else
+  #         {:cont, acc}
+  #       end
+  #   end
+  # end
+
+  # defp line_difference(left, right) do
+  #   # dbg({left, right})
+
+  #   Keyword.get(elem(left, 1), :line) -
+  #     Keyword.get(elem(right, 1), :closing, line: Keyword.get(elem(right, 1), :line))[:line]
+  # end
 end

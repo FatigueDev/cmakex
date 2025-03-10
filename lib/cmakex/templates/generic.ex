@@ -5,14 +5,16 @@ defmodule Cmakex.Templates.Generic do
   import Cmakex.Templates.Set
   alias Cmakex.Helpers.Environment
 
-  defmacro comment(text) do
-    quote do
-      append_line("# #{unquote(text)}")
-    end
+  def comment(text) do
+    append_line("# #{text}")
   end
 
-  defmacro include(value) do
+  def include(value) do
     append_line("include(#{value})")
+  end
+
+  def raw_cmake(string) do
+    append_line(string)
   end
 
   def cmake_minimum_required(version \\ "3.10") do
@@ -34,7 +36,13 @@ defmodule Cmakex.Templates.Generic do
     set("MIX_TARGET", Environment.get_system_or_default("MIX_TARGET", "host"))
     set("MIX_ENV", to_string(Mix.env()))
     set("MIX_BUILD_PATH", Mix.Project.build_path(config))
-    set("MIX_APP_PATH", Mix.Project.app_path(config))
+
+    if Mix.Project.umbrella?() do
+      set("MIX_APP_PATH", Mix.ProjectStack.printable_app_name())
+    else
+      set("MIX_APP_PATH", Mix.Project.app_path(config))
+    end
+
     set("MIX_COMPILE_PATH", Mix.Project.compile_path(config))
     set("MIX_CONSOLIDATION_PATH", Mix.Project.consolidation_path(config))
     set("MIX_DEPS_PATH", Mix.Project.deps_path(config))

@@ -1,6 +1,14 @@
 defmodule Cmakex.Helpers do
   @moduledoc false
 
+  defmacro key({:__aliases__, _, [key]}), do: key
+  defmacro key({atom, meta, nil}), do: "${#{to_string(atom)}}"
+  defmacro key(atom), do: "${#{to_string(atom)}}"
+
+  defmacro val(key) do
+    dbg(key)
+  end
+
   defmodule Path do
     @moduledoc false
 

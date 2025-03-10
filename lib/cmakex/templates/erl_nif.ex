@@ -8,7 +8,7 @@ defmodule Cmakex.Templates.ErlNif do
   # defmacro __using__(_) do
   #   quote do
   def add_erts_to_target(target),
-    do: target_include_directories(target, [:PRIVATE, erts_include_dir()])
+    do: target_include_directories("#{target}", [:PRIVATE, "\"#{erts_include_dir()}\""])
 
   #   end
   # end

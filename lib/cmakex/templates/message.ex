@@ -11,7 +11,6 @@ defmodule Cmakex.Templates.Message do
   def message(type \\ :STATUS, message)
 
   def message(type, message) when is_atom(type) and is_atom(message) do
-    dbg(message)
     append_line("message(#{String.upcase(Atom.to_string(type))} ${#{message}})")
   end
 

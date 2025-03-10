@@ -7,6 +7,12 @@ defmodule Cmakex.Templates.FetchContent do
   #   quote do
   def include_fetch_content, do: append_line("include(FetchContent)")
 
+  def fetch_content_make_available(targets) when is_list(targets) do
+    append_line(
+      "FetchContent_MakeAvailable(#{Enum.map_join(targets, " ", fn t -> Atom.to_string(t) end)})"
+    )
+  end
+
   def fetch_content_make_available(target) do
     append_line("FetchContent_MakeAvailable(#{target})")
   end

@@ -10,12 +10,21 @@ defmodule Cmakex do
   # end
 
   defmacro __using__(_) do
-    quote do
+    quote generated: true do
       import Cmakex
       import Cmakex.Records.Line
       import Cmakex.Cmake
+      import Cmakex.Helpers
 
       use Cmakex.Templates
+
+      # dbg(bound_comments)
+
+      # test = var!(bound_comments)
+      # unquote(dbg(test))
+
+      # var!(bound_comments) = binding()
+      # var!(module_name)
     end
   end
 end

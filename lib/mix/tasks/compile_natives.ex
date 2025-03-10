@@ -79,10 +79,20 @@ defmodule Mix.Tasks.Cmakex.Natives do
           |> Code.string_to_quoted_with_comments!(token_metadata: true)
 
         quoted_filtered_to_cmake_blocks(quoted)
-        |> quoted_filtered_to_cmake_blocks()
-        |> assign_comments_for_filtered_cmake_blocks(bound_comments, project_name)
+        # |> assign_comments_for_filtered_cmake_blocks(bound_comments, project_name)
 
-        Code.eval_quoted(quoted, [], file: file)
+        # dbg(bound_comments)
+
+        dbg(String.to_atom(project_name))
+
+        Code.eval_quoted(
+          quoted,
+          [bound_comments: bound_comments, module_name: String.to_atom(project_name)],
+          file: file,
+          module: String.to_atom(project_name)
+        )
+
+        # |> dbg
 
         Cmakex.Build.create_cmake_file(project_name)
         Cmakex.Build.build(project_name)
@@ -90,29 +100,45 @@ defmodule Mix.Tasks.Cmakex.Natives do
     end)
   end
 
-  defp assign_comments_for_filtered_cmake_blocks(quoted, bound_comments, project_name) do
-    Enum.each(quoted, fn {_, _, _} = block ->
-      comments_for_block =
-        with s <- elem(block, 1)[:do][:line], e <- elem(block, 1)[:end][:line] do
-          s..e
-          |> Range.to_list()
-          |> get_comments_for_cmake_block(bound_comments)
-        end
+  # defp assign_comments_for_filtered_cmake_blocks(quoted, bound_comments, project_name) do
+  #   Enum.each(quoted, fn {_, _, _} = block ->
+  #     comments_for_block =
+  #       with s <- elem(block, 1)[:do][:line], e <- elem(block, 1)[:end][:line] do
+  #         s..e
+  #         |> Range.to_list()
+  #         |> get_comments_for_cmake_block(bound_comments)
+  #       end
 
-      RuntimeConfig.set_comments(
-        "block_#{project_name}_#{elem(block, 1)[:do][:line]}",
-        comments_for_block
-      )
-    end)
-  end
+  #     RuntimeConfig.set_comments(
+  #       "block_#{project_name}_#{elem(block, 1)[:do][:line]}",
+  #       comments_for_block
+  #     )
+  #   end)
+  # end
 
-  defp get_comments_for_cmake_block(block_range, comments) do
-    Enum.filter(comments, fn %{line: line} ->
-      line in block_range
-    end)
-  end
+  # defp get_comments_for_cmake_block(block_range, comments) do
+  #   Enum.filter(comments, fn %{line: line} ->
+  #     line in block_range
+  #   end)
+  # end
 
   defp quoted_filtered_to_cmake_blocks(quoted) do
-    Enum.filter(quoted, &(elem(&1, 0) == :cmake))
+    # dbg(quoted)
+
+    {_ast, acc} =
+      Macro.postwalk(quoted, [], fn el, acc ->
+        case el do
+          [do: {:cmake, _meta, _args}] = cmake_block ->
+            {el, [cmake_block | acc]}
+
+          _ ->
+            {el, acc}
+        end
+      end)
+
+    acc
+
+    # Macro.prewalk(quoted, &(elem(&1, 0) == :cmake))
+    # Enum.filter(quoted, &(elem(&1, 0) == :cmake))
   end
 end
