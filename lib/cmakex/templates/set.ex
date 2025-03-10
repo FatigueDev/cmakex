@@ -5,7 +5,11 @@ defmodule Cmakex.Templates.Set do
 
   # defmacro __using__(_) do
   #   quote do
-  def set(key, value) do
+  def set(key, value) when is_binary(key) do
+    append_line("set(#{key} #{value})")
+  end
+
+  def set(key, value) when is_atom(key) do
     case Macro.classify_atom(key) do
       :alias ->
         key = to_string(key) |> String.replace("Elixir.", "")

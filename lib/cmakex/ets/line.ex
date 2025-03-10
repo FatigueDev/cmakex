@@ -125,11 +125,15 @@ defmodule Cmakex.ETS.Line do
 
       case arg do
         {key, value} ->
-          dbg("Adding key value when it shouldn't")
           append_inline("#{key}#{separator}#{value}")
 
+        value when value == " " ->
+          append_inline("#{value}")
+
+        value when is_binary(value) ->
+          append_inline("\"#{value}\"")
+
         value ->
-          # dbg(value)
           append_inline("#{value}")
       end
 

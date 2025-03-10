@@ -83,8 +83,6 @@ defmodule Mix.Tasks.Cmakex.Natives do
 
         # dbg(bound_comments)
 
-        dbg(String.to_atom(project_name))
-
         Code.eval_quoted(
           quoted,
           [bound_comments: bound_comments, module_name: String.to_atom(project_name)],

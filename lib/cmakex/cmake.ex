@@ -49,49 +49,173 @@ defmodule Cmakex.Cmake do
     Generic.cmake_minimum_required()
     Generic.stamp_default_env()
 
-    insert_comments(comments)
+    {:__block__, block_meta, block_elements} = block
+    block_starting_line = block_meta[:line]
+    block_ending_line = elem(List.last(block_elements), 1)[:line]
 
-    replace_elixir_ast_with_valid_cmake(block)
+    block_elements =
+      (block_elements ++ comments_to_ast(comments, block_starting_line, block_ending_line))
+      |> sort_ast_by_line()
+      |> replace_elixir_with_cmake_calls()
 
-    ErlNif.add_erts_to_target("${PROJECT_ID}")
-
-    # dbg(binding())
-
-    # block =
-    # quote location: :keep do
-    # get_elements_in_block(Macro.escape(unquote(block)))
-    # end
-
-    # {:__block__, [line: 1], block}
+    block_elements = block_elements ++ [quote(do: ErlNif.add_erts_to_target("${PROJECT_ID}"))]
+    {:__block__, block_meta, block_elements}
   end
 
   def cmake_gen([boilerplate: false], block, comments) do
     {:__block__, block_meta, block_elements} = block
-    starting_line = block_meta[:line]
-    ending_line = elem(List.last(block_elements), 1)[:line]
-
-    comments_as_ast =
-      Enum.filter(comments, fn %{line: line} ->
-        line > starting_line && line < ending_line
-      end)
-      |> Enum.map(fn %{line: line, text: text} ->
-        quote line: line, do: append_line(unquote(text))
-      end)
+    block_starting_line = block_meta[:line]
+    block_ending_line = elem(List.last(block_elements), 1)[:line]
 
     block_elements =
-      (block_elements ++ comments_as_ast)
-      |> Enum.sort_by(fn {_, meta, _} ->
-        meta[:line]
-      end)
+      (block_elements ++ comments_to_ast(comments, block_starting_line, block_ending_line))
+      |> sort_ast_by_line()
+      |> replace_elixir_with_cmake_calls()
 
-    block = {:__block__, block_meta, block_elements}
+    {:__block__, block_meta, block_elements}
   end
 
-  def order_by_lines([]), do: nil
+  def replace_elixir_with_cmake_calls(block_elements) do
+    Macro.postwalk(block_elements, fn el ->
+      replace_element(el)
+    end)
+  end
 
-  def order_by_lines([{key, _meta, args} = element | tail] = block) do
-    dbg(element)
-    order_by_lines(tail)
+  def replace_element(
+        {:=, _assignment_meta,
+         [
+           {function_name, _function_meta, nil},
+           {:fn, _fn_meta,
+            [
+              {:->, _arg_meta,
+               [
+                 function_args,
+                 body
+               ]}
+            ]}
+         ]} = _el
+      ) do
+    body =
+      case body do
+        {:__block__, _block_meta, body} -> body
+        body -> body
+      end
+
+    function_args_as_atoms = Enum.map(function_args, fn {key, _, _} -> key end)
+    function_args_as_strings = Enum.map(function_args, fn {key, _, _} -> "#{key}" end)
+    function_args_as_key_calls = Enum.map(function_args, fn {key, _, _} -> "${#{key}}" end)
+    # variable_assignment =
+    #   Enum.map(Macro.escape(function_args), fn {:{}, [], [key, meta, nil]} ->
+    #     Macro.var(key, __MODULE__)
+    #   end)
+
+    # dbg(variable_assignment)
+    vars = Enum.map(function_args_as_atoms, &Macro.var(&1, nil))
+
+    combined_chunks =
+      [
+        quote do
+          append_line()
+
+          Cmakex.Templates.Function.function_header(
+            unquote(function_name),
+            unquote(function_args_as_strings)
+          )
+
+          Cmakex.ETS.RuntimeConfig.increment_depth()
+        end,
+        quote do
+          var_count = length(unquote(function_args_as_key_calls))
+
+          [unquote_splicing(vars)] = [unquote_splicing(function_args_as_key_calls)]
+
+          dbg(unquote(vars))
+          # dbg(x)
+          # Enum.each(unquote(function_args_as_strings), fn arg ->
+          # end)
+
+          # unquote_splicing(variable_assignment)
+          unquote(body)
+        end,
+        quote do
+          Cmakex.ETS.RuntimeConfig.decrement_depth()
+          Cmakex.Templates.Function.function_close(unquote(function_name))
+          append_line()
+        end
+      ]
+
+    # final_body =
+    #   first_piece ++
+    #      ++ second_piece
+
+    dbg(combined_chunks)
+
+    # {:=, assignment_meta,
+    #  [
+    #    {function_name, function_meta, nil},
+    #    {:fn, fn_meta,
+    #     [
+    #       {:->, arg_meta,
+    #        [
+    #          function_args,
+    #          {:__block__, block_meta, final_body}
+    #        ]}
+    #     ]}
+    #  ]}
+    combined_chunks
+
+    # quote bind_quoted: [
+    #         function_name: function_name,
+    #         function_args: function_args
+    #       ] do
+    #   Cmakex.Templates.Function.function_header(
+    #     function_name,
+    #     function_args
+    #   )
+
+    #   # Code.eval_quoted(body, function_args)
+    #   Cmakex.Templates.Function.function_close(function_name)
+    # end
+
+    # el
+  end
+
+  def replace_function_body({:__block__, meta, body}), do: body
+  def replace_function_body(body), do: body
+
+  def replace_element(
+        {{:., _meta, [{function_name, _function_meta, nil}]}, _call_meta, call_args} = el
+      ) do
+    quote bind_quoted: [function_name: function_name, call_args: call_args] do
+      Cmakex.Templates.Function.function_call(
+        function_name,
+        call_args
+      )
+    end
+  end
+
+  def replace_element(el) do
+    el
+  end
+
+  def comments_to_ast(comments, block_starting_line, block_ending_line) do
+    Enum.filter(comments, fn %{line: line} ->
+      line > block_starting_line && line < block_ending_line
+    end)
+    |> Enum.map(fn %{line: line, text: text} ->
+      quote line: line, do: append_line(unquote(text))
+    end)
+  end
+
+  def append_comments_ast_to_elements_list(comments_ast, block_elements) do
+    block_elements ++ comments_ast
+  end
+
+  def sort_ast_by_line(elements) do
+    elements
+    |> Enum.sort_by(fn {_, meta, _} ->
+      meta[:line]
+    end)
   end
 
   # def get_elements_in_block(block) do

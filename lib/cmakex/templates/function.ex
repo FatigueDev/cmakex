@@ -43,14 +43,14 @@ defmodule Cmakex.Templates.Function do
 
   def function_header(key, args) do
     # dbg({key, args})
-    {fixed_key, _, nil} = key
-    fixed_args = Enum.map_join(args, " ", fn {key, _, nil} -> "#{key}" end)
-    append_line("function(#{fixed_key} #{fixed_args})")
+
+    # {fixed_key, _, nil} = key
+    fixed_args = Enum.map_join(args, " ", fn key -> "#{key}" end)
+    append_line("function(#{to_string(key)} #{fixed_args})")
   end
 
   def function_close(key) do
-    {fixed_key, _, nil} = key
-    append_line("endfunction(#{fixed_key})")
+    append_line("endfunction(#{to_string(key)})")
   end
 
   # defmacro function(name, args, expression) do
@@ -68,6 +68,10 @@ defmodule Cmakex.Templates.Function do
   #     append_line("endfunction(#{unquote(name)})")
   #   end
   # end
+
+  def function_call(function_name, args) when is_atom(function_name) do
+    function_call(to_string(function_name), args)
+  end
 
   def function_call(function_name, args) do
     append_inline_with_args(function_name, "", args)
